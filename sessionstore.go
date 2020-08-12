@@ -9,8 +9,14 @@ import (
 	"time"
 )
 
-type sessionManager struct {
+type SessionManager struct {
 	Sessions []*Session
+	Messages []*Message
+}
+
+type Message struct {
+	MessageType		string
+	Content			string
 }
 
 type Session struct {
@@ -24,11 +30,11 @@ var (
 	mut *sync.RWMutex
 )
 
-func NewManager() *sessionManager {
-	return &sessionManager{}
+func NewManager() *SessionManager {
+	return &SessionManager{}
 }
 
-func (m *sessionManager) Create(name string, lt time.Time) (*Session, error) {
+func (m *SessionManager) Create(name string, lt time.Time) (*Session, error) {
 	id := uuid.New().String()
 	fmt.Println("generated uuid:", id)
 	for _, v := range m.Sessions {
@@ -49,7 +55,7 @@ func (m *sessionManager) Create(name string, lt time.Time) (*Session, error) {
 	return s, nil
 }
 
-func (m *sessionManager) Get(id string) (*Session, error) {
+func (m *SessionManager) Get(id string) (*Session, error) {
 	for _, v := range m.Sessions {
 		if v.Id == id {
 			return v, nil
@@ -59,7 +65,7 @@ func (m *sessionManager) Get(id string) (*Session, error) {
 	return nil, errors.New("could not find Session for given ID")
 }
 
-func (m *sessionManager) Remove(id string) {
+func (m *SessionManager) Remove(id string) {
 	for i, v := range m.Sessions {
 		if v.Id == id {
 			mut.Lock()
@@ -68,6 +74,14 @@ func (m *sessionManager) Remove(id string) {
 			return
 		}
 	}
+}
+
+func (m *SessionManager) AddMessage(t string, msg string) {
+
+}
+
+func (m *SessionManager) GetMessage(t string) {
+
 }
 
 func (s *Session) Get(key string) (string, bool) {
@@ -89,9 +103,12 @@ func (s *Session) SetCookie(w http.ResponseWriter) {
 	})
 }
 
-func (s *Session) GetCookie(r *http.Request) (*http.Cookie, error) {
+func (s *Session) GetCookie(r *http.Request) (string, error) {
 	c, err := r.Cookie(s.CookieName)
-	return c, err
+	if err != nil {
+		return "", err
+	}
+	return c.Value, err
 }
 
 // Helper

@@ -30,8 +30,10 @@ var (
 	mut *sync.RWMutex
 )
 
-func NewManager() *SessionManager {
-	return &SessionManager{}
+func NewManager(sessName string) *SessionManager {
+	return &SessionManager{
+		CookieName: sessName,
+	}
 }
 
 func (m *SessionManager) CreateSession(name string, lt time.Time) (*Session, error) {

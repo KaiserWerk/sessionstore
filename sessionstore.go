@@ -97,10 +97,11 @@ func (s *Session) SetVar(key string, value string) {
 }
 
 func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) {
+	fmt.Printf("Setting cookie with name %s, value %s", m.CookieName, value)
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.CookieName,
 		Value:    value,
-		//Path:     "/",
+		Path:     "/",
 		Expires:  time.Now().Add(30 * 24 * time.Hour),
 		HttpOnly: true,
 	})

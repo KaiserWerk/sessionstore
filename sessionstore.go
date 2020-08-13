@@ -10,8 +10,9 @@ import (
 )
 
 type SessionManager struct {
-	Sessions []*Session
-	Messages []*Message
+	CookieName		string
+	Sessions 		[]*Session
+	Messages 		[]*Message
 }
 
 type Message struct {
@@ -21,9 +22,8 @@ type Message struct {
 
 type Session struct {
 	Id         string
-	CookieName string
 	Lifetime   time.Time
-	Vars       map[string]string
+	Vars       map[string]interface{}
 }
 
 var (
@@ -45,7 +45,6 @@ func (m *SessionManager) Create(name string, lt time.Time) (*Session, error) {
 
 	s := &Session{
 		Id:         id,
-		CookieName: name,
 		Lifetime:   lt,
 		Vars:       nil,
 	}
@@ -84,27 +83,27 @@ func (m *SessionManager) GetMessage(t string) {
 
 }
 
-func (s *Session) Get(key string) (string, bool) {
+func (s *Session) GetVar(key string) (interface{}, bool) {
 	val, ok := s.Vars[key]
 	return val, ok
 }
 
-func (s *Session) Set(key string, value string) {
+func (s *Session) SetVar(key string, value string) {
 	s.Vars[key] = value
 }
 
-func (s *Session) SetCookie(w http.ResponseWriter) {
+func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     s.CookieName,
-		Value:    s.Id,
+		Name:     m.CookieName,
+		Value:    value,
 		Path:     "/",
 		Expires:  time.Now().Add(30 * 24 * time.Hour),
 		HttpOnly: true,
 	})
 }
 
-func (s *Session) GetCookie(r *http.Request) (string, error) {
-	c, err := r.Cookie(s.CookieName)
+func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
+	c, err := r.Cookie(m.CookieName)
 	if err != nil {
 		return "", err
 	}

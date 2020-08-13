@@ -50,7 +50,7 @@ func (m *SessionManager) CreateSession(name string, lt time.Time) (*Session, err
 	s := &Session{
 		Id:         id,
 		Lifetime:   lt,
-		Vars:       nil,
+		Vars:       make(map[string]interface{}),,
 	}
 
 	m.Sessions = append(m.Sessions, s)

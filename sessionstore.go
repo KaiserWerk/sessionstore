@@ -30,9 +30,11 @@ var (
 	mut *sync.RWMutex
 )
 
-func NewManager(sessName string) *SessionManager {
+func NewManager(cn string) *SessionManager {
 	return &SessionManager{
-		CookieName: sessName,
+		CookieName: cn,
+		Sessions: make([]*Session, 10),
+		Messages: make([]*Message, 10),
 	}
 }
 

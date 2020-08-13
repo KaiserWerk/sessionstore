@@ -23,7 +23,7 @@ type Message struct {
 type Session struct {
 	Id         string
 	Lifetime   time.Time
-	Vars       map[string]interface{}
+	Vars       map[string]string
 }
 
 var (
@@ -40,7 +40,7 @@ func NewManager(cn string) *SessionManager {
 
 func (m *SessionManager) CreateSession(name string, lt time.Time) (*Session, error) {
 	id := uuid.New().String()
-	fmt.Println("generated uuid:", id)
+	//fmt.Println("generated uuid:", id)
 	for _, v := range m.Sessions {
 		if v.Id == id {
 			return nil, errors.New("could not use generated uuid because it is already in use")
@@ -50,7 +50,7 @@ func (m *SessionManager) CreateSession(name string, lt time.Time) (*Session, err
 	s := &Session{
 		Id:         id,
 		Lifetime:   lt,
-		Vars:       make(map[string]interface{}),
+		Vars:       make(map[string]string),
 	}
 
 	m.Sessions = append(m.Sessions, s)
@@ -87,7 +87,7 @@ func (m *SessionManager) GetMessage(t string) {
 
 }
 
-func (s *Session) GetVar(key string) (interface{}, bool) {
+func (s *Session) GetVar(key string) (string, bool) {
 	val, ok := s.Vars[key]
 	return val, ok
 }
@@ -103,6 +103,17 @@ func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) {
 		Value:    value,
 		Path:     "/",
 		Expires:  time.Now().Add(30 * 24 * time.Hour),
+		HttpOnly: true,
+	})
+}
+
+func (m *SessionManager) RemoveCookie(w http.ResponseWriter) {
+	fmt.Printf("Removing cookie with name %s", m.CookieName)
+	http.SetCookie(w, &http.Cookie{
+		Name:     m.CookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -10,
 		HttpOnly: true,
 	})
 }

@@ -34,7 +34,7 @@ func NewManager() *SessionManager {
 	return &SessionManager{}
 }
 
-func (m *SessionManager) Create(name string, lt time.Time) (*Session, error) {
+func (m *SessionManager) CreateSession(name string, lt time.Time) (*Session, error) {
 	id := uuid.New().String()
 	fmt.Println("generated uuid:", id)
 	for _, v := range m.Sessions {
@@ -54,7 +54,7 @@ func (m *SessionManager) Create(name string, lt time.Time) (*Session, error) {
 	return s, nil
 }
 
-func (m *SessionManager) Get(id string) (*Session, error) {
+func (m *SessionManager) GetSession(id string) (*Session, error) {
 	for _, v := range m.Sessions {
 		if v.Id == id {
 			return v, nil
@@ -64,7 +64,7 @@ func (m *SessionManager) Get(id string) (*Session, error) {
 	return nil, errors.New("could not find Session for given ID")
 }
 
-func (m *SessionManager) Remove(id string) {
+func (m *SessionManager) RemoveSession(id string) {
 	for i, v := range m.Sessions {
 		if v.Id == id {
 			mut.Lock()

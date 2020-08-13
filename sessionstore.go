@@ -112,7 +112,7 @@ func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return c.Value, err
+	return c.Value, nil
 }
 
 // Helper

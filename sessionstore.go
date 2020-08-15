@@ -27,7 +27,7 @@ type Session struct {
 }
 
 var (
-	mut *sync.RWMutex
+	mut = &sync.Mutex{}
 )
 
 func NewManager(cn string) SessionManager {
@@ -54,9 +54,9 @@ func (m SessionManager) CreateSession(lt time.Time) (Session, error) {
 		Vars:       make(map[string]string),
 	}
 
-	mut.Lock()
+	//mut.Lock()
 	m.Sessions = append(m.Sessions, s)
-	mut.Unlock()
+	//mut.Unlock()
 
 	return s, nil
 }

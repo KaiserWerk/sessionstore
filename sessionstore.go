@@ -38,9 +38,16 @@ func NewManager(cn string) *SessionManager {
 	}
 }
 
-func (m *SessionManager) CreateSession(name string, lt time.Time) (*Session, error) {
+func (m *SessionManager) CreateSession(lt time.Time) (*Session, error) {
+	if m == nil {
+		return nil, errors.New("*SessionManager is nil")
+	}
+	if m.Sessions == nil {
+		return nil, errors.New("*SessionManager.Sessions is nil")
+	}
 	id := uuid.New().String()
-	//fmt.Println("generated uuid:", id)
+	fmt.Println("generated uuid:", id)
+
 	for _, v := range m.Sessions {
 		if v.Id == id {
 			return nil, errors.New("could not use generated uuid because it is already in use")
@@ -59,6 +66,12 @@ func (m *SessionManager) CreateSession(name string, lt time.Time) (*Session, err
 }
 
 func (m *SessionManager) GetSession(id string) (*Session, error) {
+	if m == nil {
+		return nil, errors.New("*SessionManager is nil")
+	}
+	if m.Sessions == nil {
+		return nil, errors.New("*SessionManager.Sessions is nil")
+	}
 	for _, v := range m.Sessions {
 		if v.Id == id {
 			return v, nil
@@ -68,23 +81,39 @@ func (m *SessionManager) GetSession(id string) (*Session, error) {
 	return nil, errors.New("could not find Session for given ID")
 }
 
-func (m *SessionManager) RemoveSession(id string) {
+func (m *SessionManager) RemoveSession(id string) error {
+	if m == nil {
+		return errors.New("*SessionManager is nil")
+	}
+	if m.Sessions == nil {
+		return errors.New("*SessionManager.Sessions is nil")
+	}
 	for i, v := range m.Sessions {
 		if v.Id == id {
 			mut.Lock()
 			m.Sessions = removeIndex(m.Sessions, i)
 			mut.Unlock()
-			return
+			return nil
 		}
 	}
+
+	return nil
 }
 
-func (m *SessionManager) AddMessage(t string, msg string) {
+func (m *SessionManager) AddMessage(t string, msg string) error {
+	if m == nil {
+		return errors.New("*SessionManager is nil")
+	}
 
+	return nil
 }
 
-func (m *SessionManager) GetMessage(t string) {
+func (m *SessionManager) GetMessage(t string) error {
+	if m == nil {
+		return errors.New("*SessionManager is nil")
+	}
 
+	return nil
 }
 
 func (s *Session) GetVar(key string) (string, bool) {
@@ -96,7 +125,11 @@ func (s *Session) SetVar(key string, value string) {
 	s.Vars[key] = value
 }
 
-func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) {
+func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) error {
+	if m == nil {
+		return errors.New("*SessionManager is nil")
+	}
+
 	fmt.Printf("Setting cookie with name %s, value %s", m.CookieName, value)
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.CookieName,
@@ -105,9 +138,15 @@ func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) {
 		Expires:  time.Now().Add(30 * 24 * time.Hour),
 		HttpOnly: true,
 	})
+
+	return nil
 }
 
-func (m *SessionManager) RemoveCookie(w http.ResponseWriter) {
+func (m *SessionManager) RemoveCookie(w http.ResponseWriter) error {
+	if m == nil {
+		return errors.New("*SessionManager is nil")
+	}
+
 	fmt.Printf("Removing cookie with name %s", m.CookieName)
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.CookieName,
@@ -116,9 +155,15 @@ func (m *SessionManager) RemoveCookie(w http.ResponseWriter) {
 		MaxAge:   -10,
 		HttpOnly: true,
 	})
+
+	return nil
 }
 
 func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
+	if m == nil {
+		return "", errors.New("*SessionManager is nil")
+	}
+
 	c, err := r.Cookie(m.CookieName)
 	if err != nil {
 		return "", err

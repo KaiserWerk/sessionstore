@@ -21,24 +21,26 @@ type Message struct {
 }
 
 type Session struct {
-	Id         string
-	Lifetime   time.Time
-	Vars       map[string]string
+	Id          string
+	Lifetime    time.Time
+
+	Vars        map[string]string
 }
 
 var (
-	mut = &sync.Mutex{}
+	sessMgrMutex sync.Mutex
+	sessMutex sync.Mutex
 )
 
-func NewManager(cn string) SessionManager {
-	return SessionManager{
+func NewManager(cn string) *SessionManager {
+	return &SessionManager{
 		CookieName: cn,
-		Sessions: make([]Session, 10),
-		Messages: make([]Message, 10),
+		Sessions: make([]Session, 0),
+		Messages: make([]Message, 0),
 	}
 }
 
-func (m SessionManager) CreateSession(lt time.Time) (Session, error) {
+func (m *SessionManager) CreateSession(lt time.Time) (Session, error) {
 	id := uuid.New().String()
 	fmt.Println("generated uuid:", id)
 
@@ -54,14 +56,18 @@ func (m SessionManager) CreateSession(lt time.Time) (Session, error) {
 		Vars:       make(map[string]string),
 	}
 
-	//mut.Lock()
+	sessMgrMutex.Lock()
+	defer sessMgrMutex.Unlock()
 	m.Sessions = append(m.Sessions, s)
-	//mut.Unlock()
+	//fmt.Println("session count (CREATE after):", len(m.Sessions))
+	//fmt.Println(m.Sessions)
 
 	return s, nil
 }
 
-func (m SessionManager) GetSession(id string) (Session, error) {
+func (m *SessionManager) GetSession(id string) (Session, error) {
+	//fmt.Println("session count (GET):", len(m.Sessions))
+	//fmt.Println(m.Sessions)
 	for _, v := range m.Sessions {
 		if v.Id == id {
 			return v, nil
@@ -71,12 +77,13 @@ func (m SessionManager) GetSession(id string) (Session, error) {
 	return Session{}, errors.New("could not find Session for given ID")
 }
 
-func (m SessionManager) RemoveSession(id string) error {
+func (m *SessionManager) RemoveSession(id string) error {
 	for i, v := range m.Sessions {
 		if v.Id == id {
-			mut.Lock()
+			sessMgrMutex.Lock()
+			defer sessMgrMutex.Unlock()
 			m.Sessions = removeIndex(m.Sessions, i)
-			mut.Unlock()
+
 			return nil
 		}
 	}
@@ -84,13 +91,13 @@ func (m SessionManager) RemoveSession(id string) error {
 	return nil
 }
 
-func (m SessionManager) AddMessage(t string, msg string) error {
+func (m *SessionManager) AddMessage(t string, msg string) error {
 
 
 	return nil
 }
 
-func (m SessionManager) GetMessage(t string) error {
+func (m *SessionManager) GetMessage(t string) error {
 
 
 	return nil
@@ -102,11 +109,13 @@ func (s Session) GetVar(key string) (string, bool) {
 }
 
 func (s Session) SetVar(key string, value string) {
+	sessMutex.Lock()
+	defer sessMutex.Unlock()
 	s.Vars[key] = value
 }
 
-func (m SessionManager) SetCookie(w http.ResponseWriter, value string) error {
-	fmt.Printf("Setting cookie with name %s, value %s", m.CookieName, value)
+func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) error {
+	//fmt.Printf("Setting cookie with name %s, value %s\n", m.CookieName, value)
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.CookieName,
 		Value:    value,
@@ -118,8 +127,8 @@ func (m SessionManager) SetCookie(w http.ResponseWriter, value string) error {
 	return nil
 }
 
-func (m SessionManager) RemoveCookie(w http.ResponseWriter) error {
-	fmt.Printf("Removing cookie with name %s", m.CookieName)
+func (m *SessionManager) RemoveCookie(w http.ResponseWriter) error {
+	//fmt.Printf("Removing cookie with name %s", m.CookieName)
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.CookieName,
 		Value:    "",
@@ -131,7 +140,7 @@ func (m SessionManager) RemoveCookie(w http.ResponseWriter) error {
 	return nil
 }
 
-func (m SessionManager) GetCookieValue(r *http.Request) (string, error) {
+func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
 	c, err := r.Cookie(m.CookieName)
 	if err != nil {
 		return "", err

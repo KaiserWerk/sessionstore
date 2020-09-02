@@ -1,4 +1,4 @@
-module github.com/KaiserWerk/session-store
+module github.com/KaiserWerk/sessionstore
 
 go 1.14
 

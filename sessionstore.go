@@ -81,14 +81,18 @@ func (m *SessionManager) RemoveSession(id string) error {
 	for i, v := range m.Sessions {
 		if v.Id == id {
 			sessMgrMutex.Lock()
-			defer sessMgrMutex.Unlock()
 			m.Sessions = removeIndex(m.Sessions, i)
+			sessMgrMutex.Unlock()
 
 			return nil
 		}
 	}
 
 	return nil
+}
+
+func (m *SessionManager) RemoveAllSessions() {
+	 m.Sessions = []Session{}
 }
 
 func (m *SessionManager) AddMessage(t string, msg string) error {

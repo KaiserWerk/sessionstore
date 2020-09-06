@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -42,8 +41,8 @@ func NewManager(cn string) *SessionManager {
 }
 
 func (m *SessionManager) CreateSession(lt time.Time) (Session, error) {
-	id := generateSessionId(40)
-	fmt.Println("generated uuid:", id)
+	id := generateSessionId(30)
+	//fmt.Println("generated uuid:", id)
 
 	for _, v := range m.Sessions {
 		if v.Id == id {

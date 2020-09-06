@@ -1,9 +1,10 @@
 package sessionstore
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"net/http"
 	"sync"
 	"time"
@@ -41,12 +42,12 @@ func NewManager(cn string) *SessionManager {
 }
 
 func (m *SessionManager) CreateSession(lt time.Time) (Session, error) {
-	id := uuid.New().String()
+	id := generateSessionId(40)
 	fmt.Println("generated uuid:", id)
 
 	for _, v := range m.Sessions {
 		if v.Id == id {
-			return Session{}, errors.New("could not use generated uuid because it is already in use")
+			return Session{}, errors.New("could not use generated session id because it is already in use")
 		}
 	}
 
@@ -155,4 +156,12 @@ func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
 // Helper
 func removeIndex(s []Session, index int) []Session {
 	return append(s[:index], s[index+1:]...)
+}
+
+func generateSessionId(length int) string {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(b)
 }

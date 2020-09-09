@@ -100,12 +100,16 @@ func (m *SessionManager) AddMessage(t string, content string) {
 }
 
 func (m *SessionManager) GetMessages() []Message {
-	tmp := make([]Message, len(m.Messages))
-	copy(tmp, m.Messages)
+	if len(m.Messages) > 0 {
+		tmp := make([]Message, len(m.Messages))
+		copy(tmp, m.Messages)
 
-	m.Messages = make([]Message, 0)
-	fmt.Println("returning", len(tmp), "messages")
-	return tmp
+		m.Messages = make([]Message, 0)
+		fmt.Println("returning", len(tmp), "messages")
+
+		return tmp
+	}
+	return make([]Message, 0)
 }
 
 func (s Session) GetVar(key string) (string, bool) {

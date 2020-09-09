@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -42,7 +43,6 @@ func NewManager(cn string) *SessionManager {
 
 func (m *SessionManager) CreateSession(lt time.Time) (Session, error) {
 	id := generateSessionId(30)
-	//fmt.Println("generated uuid:", id)
 
 	for _, v := range m.Sessions {
 		if v.Id == id {
@@ -59,15 +59,11 @@ func (m *SessionManager) CreateSession(lt time.Time) (Session, error) {
 	sessMgrMutex.Lock()
 	defer sessMgrMutex.Unlock()
 	m.Sessions = append(m.Sessions, s)
-	//fmt.Println("session count (CREATE after):", len(m.Sessions))
-	//fmt.Println(m.Sessions)
 
 	return s, nil
 }
 
 func (m *SessionManager) GetSession(id string) (Session, error) {
-	//fmt.Println("session count (GET):", len(m.Sessions))
-	//fmt.Println(m.Sessions)
 	for _, v := range m.Sessions {
 		if v.Id == id {
 			return v, nil
@@ -95,16 +91,20 @@ func (m *SessionManager) RemoveAllSessions() {
 	 m.Sessions = []Session{}
 }
 
-func (m *SessionManager) AddMessage(t string, msg string) error {
-
-
-	return nil
+func (m *SessionManager) AddMessage(t string, content string) {
+	msg := Message{
+		MessageType: t,
+		Content:     content,
+	}
+	m.Messages = append(m.Messages, msg)
 }
 
-func (m *SessionManager) GetMessage(t string) error {
-
-
-	return nil
+func (m *SessionManager) GetMessages() []Message {
+	l := m.Messages
+	// reset!
+	m.Messages = make([]Message, 0)
+	fmt.Println("returning", len(l), "messages")
+	return l
 }
 
 func (s Session) GetVar(key string) (string, bool) {
@@ -119,7 +119,6 @@ func (s Session) SetVar(key string, value string) {
 }
 
 func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) error {
-	//fmt.Printf("Setting cookie with name %s, value %s\n", m.CookieName, value)
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.CookieName,
 		Value:    value,
@@ -132,7 +131,6 @@ func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) error {
 }
 
 func (m *SessionManager) RemoveCookie(w http.ResponseWriter) error {
-	//fmt.Printf("Removing cookie with name %s", m.CookieName)
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.CookieName,
 		Value:    "",
@@ -153,6 +151,7 @@ func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
 }
 
 // Helper
+
 func removeIndex(s []Session, index int) []Session {
 	return append(s[:index], s[index+1:]...)
 }

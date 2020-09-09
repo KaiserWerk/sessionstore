@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -24,7 +23,6 @@ type Message struct {
 type Session struct {
 	Id          string
 	Lifetime    time.Time
-
 	Vars        map[string]string
 }
 
@@ -43,23 +41,19 @@ func NewManager(cn string) *SessionManager {
 
 func (m *SessionManager) CreateSession(lt time.Time) (Session, error) {
 	id := generateSessionId(30)
-
 	for _, v := range m.Sessions {
 		if v.Id == id {
 			return Session{}, errors.New("could not use generated session id because it is already in use")
 		}
 	}
-
 	s := Session{
 		Id:         id,
 		Lifetime:   lt,
 		Vars:       make(map[string]string),
 	}
-
 	sessMgrMutex.Lock()
 	defer sessMgrMutex.Unlock()
 	m.Sessions = append(m.Sessions, s)
-
 	return s, nil
 }
 
@@ -69,7 +63,6 @@ func (m *SessionManager) GetSession(id string) (Session, error) {
 			return v, nil
 		}
 	}
-
 	return Session{}, errors.New("could not find Session for given ID")
 }
 
@@ -79,11 +72,9 @@ func (m *SessionManager) RemoveSession(id string) error {
 			sessMgrMutex.Lock()
 			m.Sessions = removeIndex(m.Sessions, i)
 			sessMgrMutex.Unlock()
-
 			return nil
 		}
 	}
-
 	return nil
 }
 
@@ -103,13 +94,10 @@ func (m *SessionManager) GetMessages() []Message {
 	if len(m.Messages) > 0 {
 		tmp := make([]Message, len(m.Messages))
 		copy(tmp, m.Messages)
-
 		m.Messages = make([]Message, 0)
-		fmt.Println("returning", len(tmp), "messages")
-
 		return tmp
 	}
-	return make([]Message, 0)
+	return nil
 }
 
 func (s Session) GetVar(key string) (string, bool) {
@@ -131,7 +119,6 @@ func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) error {
 		Expires:  time.Now().Add(30 * 24 * time.Hour),
 		HttpOnly: true,
 	})
-
 	return nil
 }
 
@@ -143,7 +130,6 @@ func (m *SessionManager) RemoveCookie(w http.ResponseWriter) error {
 		MaxAge:   -10,
 		HttpOnly: true,
 	})
-
 	return nil
 }
 

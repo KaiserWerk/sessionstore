@@ -29,16 +29,25 @@ type Session struct {
 var (
 	sessMgrMutex sync.Mutex
 	sessMutex sync.Mutex
+	sessCleanupMutex sync.Mutex
+	mgrs []*SessionManager
 )
 
+
+// NewManager creates and returns a new *SessionManager
 func NewManager(cn string) *SessionManager {
-	return &SessionManager{
+	sm := &SessionManager{
 		CookieName: cn,
 		Sessions: make([]Session, 0),
 		Messages: make([]Message, 0),
 	}
+
+	mgrs = append(mgrs, sm)
+
+	return sm
 }
 
+// CreateSession creates a new Session under the *SessionManager
 func (m *SessionManager) CreateSession(lt time.Time) (Session, error) {
 	id := generateSessionId(30)
 	for _, v := range m.Sessions {
@@ -54,9 +63,11 @@ func (m *SessionManager) CreateSession(lt time.Time) (Session, error) {
 	sessMgrMutex.Lock()
 	defer sessMgrMutex.Unlock()
 	m.Sessions = append(m.Sessions, s)
+	go m.cleanup()
 	return s, nil
 }
 
+// GetSession retrieves the Session with the supplied session ID
 func (m *SessionManager) GetSession(id string) (Session, error) {
 	for _, v := range m.Sessions {
 		if v.Id == id {
@@ -66,22 +77,25 @@ func (m *SessionManager) GetSession(id string) (Session, error) {
 	return Session{}, errors.New("could not find Session for given ID")
 }
 
+// RemoveSession removes the Session with the supplied session ID
 func (m *SessionManager) RemoveSession(id string) error {
 	for i, v := range m.Sessions {
 		if v.Id == id {
 			sessMgrMutex.Lock()
-			m.Sessions = removeIndex(m.Sessions, i)
+			m.Sessions = removeSessionIndex(m.Sessions, i)
 			sessMgrMutex.Unlock()
 			return nil
 		}
 	}
-	return nil
+	return errors.New("could not find Session for the given ID")
 }
 
+// RemoveAllSessions removes all Sessions from a *SessionManager
 func (m *SessionManager) RemoveAllSessions() {
 	 m.Sessions = []Session{}
 }
 
+// AddMessage adds a flash message to the *SessionManager's flash bag
 func (m *SessionManager) AddMessage(t string, content string) {
 	msg := Message{
 		MessageType: t,
@@ -122,6 +136,7 @@ func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) error {
 	return nil
 }
 
+// RemoveCookie removes the session cookie (s
 func (m *SessionManager) RemoveCookie(w http.ResponseWriter) error {
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.CookieName,
@@ -133,6 +148,7 @@ func (m *SessionManager) RemoveCookie(w http.ResponseWriter) error {
 	return nil
 }
 
+// GetCookieValue fetches the session ID from the session cookie of a given request
 func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
 	c, err := r.Cookie(m.CookieName)
 	if err != nil {
@@ -141,16 +157,27 @@ func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
 	return c.Value, nil
 }
 
-// Helper
-
-func removeIndex(s []Session, index int) []Session {
+// removeSessionIndex removes a session from a session slice with the given index
+func removeSessionIndex(s []Session, index int) []Session {
 	return append(s[:index], s[index+1:]...)
 }
 
+// generateSessionId generates a new session ID
 func generateSessionId(length int) string {
 	b := make([]byte, length)
 	if _, err := rand.Read(b); err != nil {
 		return ""
 	}
 	return hex.EncodeToString(b)
+}
+
+// cleanup removed all invalid sessions
+func (m *SessionManager) cleanup() {
+	for k := range m.Sessions {
+		if m.Sessions[k].Lifetime.After(time.Now()) { // after?
+			sessCleanupMutex.Lock()
+			m.Sessions = removeSessionIndex(m.Sessions, k)
+			sessCleanupMutex.Unlock()
+		}
+	}
 }

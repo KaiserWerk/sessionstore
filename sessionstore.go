@@ -69,9 +69,13 @@ func (m *SessionManager) CreateSession(lt time.Time) (Session, error) {
 
 // GetSession retrieves the Session with the supplied session ID
 func (m *SessionManager) GetSession(id string) (Session, error) {
-	for _, v := range m.Sessions {
+	for k, v := range m.Sessions {
 		if v.Id == id {
-			return v, nil
+			if !v.Lifetime.After(time.Now()) {
+				m.Sessions = removeSessionIndex(m.Sessions, k)
+			} else {
+				return v, nil
+			}
 		}
 	}
 	return Session{}, errors.New("could not find Session for given ID")

@@ -1,3 +1,3 @@
 module github.com/KaiserWerk/sessionstore
 
-go 1.14
+go 1.15

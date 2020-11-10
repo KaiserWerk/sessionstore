@@ -178,7 +178,7 @@ func generateSessionId(length int) string {
 // cleanup removed all invalid sessions
 func (m *SessionManager) cleanup() {
 	for k := range m.Sessions {
-		if m.Sessions[k].Lifetime.After(time.Now()) { // after?
+		if m.Sessions[k].Lifetime.Before(time.Now()) { // after?
 			sessCleanupMutex.Lock()
 			m.Sessions = removeSessionIndex(m.Sessions, k)
 			sessCleanupMutex.Unlock()

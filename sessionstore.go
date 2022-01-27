@@ -112,7 +112,7 @@ func (s *Session) SetVar(key string, value string) {
 	s.Vars[key] = value
 }
 
-// SetCookie is a convenience method to set a session cookie with the initially chosen value and expiry.
+// SetCookie is a convenience method to set a session cookie with the initially chosen name.
 func (m *SessionManager) SetCookie(w http.ResponseWriter, value string, expires time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.CookieName,

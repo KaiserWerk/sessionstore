@@ -10,65 +10,53 @@ import (
 )
 
 type SessionManager struct {
-	CookieName		string
-	Sessions 		[]Session
-	Messages 		[]Message
+	CookieName string
+	Sessions   []*Session
+	mut        sync.RWMutex
 }
 
 type Message struct {
-	MessageType		string
-	Content			string
+	MessageType string
+	Content     string
 }
 
 type Session struct {
-	Id          string
-	Lifetime    time.Time
-	Vars        map[string]string
+	Id       string
+	Lifetime time.Time
+	Vars     map[string]string
+	Message  Message
+	mut      sync.RWMutex
 }
-
-var (
-	sessMgrMutex sync.Mutex
-	sessMutex sync.Mutex
-	sessCleanupMutex sync.Mutex
-	mgrs []*SessionManager
-)
-
 
 // NewManager creates and returns a new *SessionManager
 func NewManager(cn string) *SessionManager {
-	sm := &SessionManager{
+	return &SessionManager{
 		CookieName: cn,
-		Sessions: make([]Session, 0),
-		Messages: make([]Message, 0),
+		Sessions:   make([]*Session, 0),
 	}
-
-	mgrs = append(mgrs, sm)
-
-	return sm
 }
 
 // CreateSession creates a new Session under the *SessionManager
-func (m *SessionManager) CreateSession(lt time.Time) (Session, error) {
-	id := generateSessionId(30)
-	for _, v := range m.Sessions {
-		if v.Id == id {
-			return Session{}, errors.New("could not use generated session id because it is already in use")
-		}
+func (m *SessionManager) CreateSession(lt time.Time) (*Session, error) {
+	id, err := generateSessionId(m.Sessions, 30)
+	if err != nil {
+		return nil, err
 	}
+
 	s := Session{
-		Id:         id,
-		Lifetime:   lt,
-		Vars:       make(map[string]string),
+		Id:       id,
+		Lifetime: lt,
+		Vars:     make(map[string]string),
 	}
-	sessMgrMutex.Lock()
-	defer sessMgrMutex.Unlock()
-	m.Sessions = append(m.Sessions, s)
-	go m.cleanup()
-	return s, nil
+	m.Sessions = append(m.Sessions, &s)
+
+	return &s, nil
 }
 
 // GetSession retrieves the Session with the supplied session ID
-func (m *SessionManager) GetSession(id string) (Session, error) {
+func (m *SessionManager) GetSession(id string) (*Session, error) {
+	m.mut.RLock()
+	defer m.mut.RUnlock()
 	for k, v := range m.Sessions {
 		if v.Id == id {
 			if !v.Lifetime.After(time.Now()) {
@@ -78,16 +66,16 @@ func (m *SessionManager) GetSession(id string) (Session, error) {
 			}
 		}
 	}
-	return Session{}, errors.New("could not find Session for given ID")
+	return nil, errors.New("could not find Session for given ID")
 }
 
 // RemoveSession removes the Session with the supplied session ID
 func (m *SessionManager) RemoveSession(id string) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
 	for i, v := range m.Sessions {
 		if v.Id == id {
-			sessMgrMutex.Lock()
 			m.Sessions = removeSessionIndex(m.Sessions, i)
-			sessMgrMutex.Unlock()
 			return nil
 		}
 	}
@@ -96,52 +84,47 @@ func (m *SessionManager) RemoveSession(id string) error {
 
 // RemoveAllSessions removes all Sessions from a *SessionManager
 func (m *SessionManager) RemoveAllSessions() {
-	 m.Sessions = []Session{}
+	m.Sessions = []*Session{}
 }
 
-// AddMessage adds a flash message to the *SessionManager's flash bag
-func (m *SessionManager) AddMessage(t string, content string) {
-	msg := Message{
+// SetMessage sets a flash message to the *Session
+func (s *Session) SetMessage(t string, content string) {
+	s.Message = Message{
 		MessageType: t,
 		Content:     content,
 	}
-	m.Messages = append(m.Messages, msg)
 }
 
-func (m *SessionManager) GetMessages() []Message {
-	if len(m.Messages) > 0 {
-		tmp := make([]Message, len(m.Messages))
-		copy(tmp, m.Messages)
-		m.Messages = make([]Message, 0)
-		return tmp
-	}
-	return nil
+func (s *Session) GetMessage() Message {
+	return s.Message
 }
 
-func (s Session) GetVar(key string) (string, bool) {
+func (s *Session) GetVar(key string) (string, bool) {
+	s.mut.RLock()
+	defer s.mut.RUnlock()
 	val, ok := s.Vars[key]
 	return val, ok
 }
 
-func (s Session) SetVar(key string, value string) {
-	sessMutex.Lock()
-	defer sessMutex.Unlock()
+func (s *Session) SetVar(key string, value string) {
+	s.mut.Lock()
+	defer s.mut.Unlock()
 	s.Vars[key] = value
 }
 
-func (m *SessionManager) SetCookie(w http.ResponseWriter, value string) error {
+// SetCookie is a convenience method to set a session cookie with the initially chosen value and expiry.
+func (m *SessionManager) SetCookie(w http.ResponseWriter, value string, expires time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.CookieName,
 		Value:    value,
 		Path:     "/",
-		Expires:  time.Now().Add(30 * 24 * time.Hour),
+		Expires:  expires,
 		HttpOnly: true,
 	})
-	return nil
 }
 
-// RemoveCookie removes the session cookie (s
-func (m *SessionManager) RemoveCookie(w http.ResponseWriter) error {
+// RemoveCookie is a convenience method to remove the session cookie (s
+func (m *SessionManager) RemoveCookie(w http.ResponseWriter, name string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     m.CookieName,
 		Value:    "",
@@ -149,7 +132,6 @@ func (m *SessionManager) RemoveCookie(w http.ResponseWriter) error {
 		MaxAge:   -10,
 		HttpOnly: true,
 	})
-	return nil
 }
 
 // GetCookieValue fetches the session ID from the session cookie of a given request
@@ -162,26 +144,23 @@ func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
 }
 
 // removeSessionIndex removes a session from a session slice with the given index
-func removeSessionIndex(s []Session, index int) []Session {
+func removeSessionIndex(s []*Session, index int) []*Session {
 	return append(s[:index], s[index+1:]...)
 }
 
 // generateSessionId generates a new session ID
-func generateSessionId(length int) string {
+func generateSessionId(ss []*Session, length int) (string, error) {
 	b := make([]byte, length)
 	if _, err := rand.Read(b); err != nil {
-		return ""
+		return "", err
 	}
-	return hex.EncodeToString(b)
-}
+	id := hex.EncodeToString(b)
 
-// cleanup removed all invalid sessions
-func (m *SessionManager) cleanup() {
-	for k := range m.Sessions {
-		if m.Sessions[k].Lifetime.Before(time.Now()) { // after?
-			sessCleanupMutex.Lock()
-			m.Sessions = removeSessionIndex(m.Sessions, k)
-			sessCleanupMutex.Unlock()
+	for _, v := range ss {
+		if v.Id == id {
+			return generateSessionId(ss, length)
 		}
 	}
+
+	return id, nil
 }

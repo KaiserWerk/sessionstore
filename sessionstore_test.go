@@ -1,6 +1,7 @@
 package sessionstore
 
 import (
+	"os"
 	"testing"
 	"time"
 )
@@ -55,5 +56,30 @@ func Test_removeSessionIndex(t *testing.T) {
 	res := removeSessionIndex(s, 1)
 	if len(res) != 2 {
 		t.Fatalf("expected 2 entries, got %d", len(res))
+	}
+}
+
+func Test_Persistence(t *testing.T) {
+	sn := "test123"
+	mgr := NewManager(sn)
+	file := "test.sess"
+	defer os.Remove(file)
+
+	err := mgr.ToFile(file)
+	if err != nil {
+		t.Fatalf("could not persist sessions to file: %s", err.Error())
+	}
+
+	mgr2, err := NewManagerFromFile(file)
+	if err != nil {
+		t.Fatalf("could not get sessions from file: %s", err.Error())
+	}
+
+	if mgr2.SessionName != sn {
+		t.Fatalf("expected session name '%s', got '%s", sn, mgr2.SessionName)
+	}
+
+	if len(mgr2.Sessions) != 0 {
+		t.Fatalf("expected 0 sessions in mgr from file, got %d", len(mgr2.Sessions))
 	}
 }

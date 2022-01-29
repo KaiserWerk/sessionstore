@@ -95,10 +95,12 @@ func (s *Session) SetMessage(t string, content string) {
 	}
 }
 
+// GetMessage returns a previously set message
 func (s *Session) GetMessage() Message {
 	return s.Message
 }
 
+// GetVar returns whether the variable with the given name and the actual value, if it exists
 func (s *Session) GetVar(key string) (string, bool) {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
@@ -106,6 +108,7 @@ func (s *Session) GetVar(key string) (string, bool) {
 	return val, ok
 }
 
+// SetVar sets a attaches a variable with the given name and value
 func (s *Session) SetVar(key string, value string) {
 	s.mut.Lock()
 	defer s.mut.Unlock()

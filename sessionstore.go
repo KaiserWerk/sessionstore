@@ -2,17 +2,21 @@ package sessionstore
 
 import (
 	"crypto/rand"
+	"encoding/gob"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
+	"os"
 	"sync"
 	"time"
 )
 
 type SessionManager struct {
-	CookieName string
-	Sessions   []*Session
-	mut        sync.RWMutex
+	SessionName string
+	Sessions    []*Session
+	mut         sync.RWMutex
 }
 
 type Message struct {
@@ -29,11 +33,40 @@ type Session struct {
 }
 
 // NewManager creates and returns a new *SessionManager
-func NewManager(cn string) *SessionManager {
+func NewManager(sn string) *SessionManager {
 	return &SessionManager{
-		CookieName: cn,
-		Sessions:   make([]*Session, 0),
+		SessionName: sn,
+		Sessions:    make([]*Session, 0),
 	}
+}
+
+func NewManagerFromFile(file string) (*SessionManager, error) {
+	m := SessionManager{}
+	fh, err := os.OpenFile(file, os.O_RDONLY, 0600)
+	if err != nil {
+		return nil, err
+	}
+	defer fh.Close()
+
+	if err = gob.NewDecoder(fh).Decode(&m); err != nil {
+		return nil, err
+	}
+
+	return &m, nil
+}
+
+func (m *SessionManager) ToFile(file string) error {
+	fh, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+
+	if err = gob.NewEncoder(fh).Encode(m); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CreateSession creates a new Session under the *SessionManager
@@ -67,6 +100,22 @@ func (m *SessionManager) GetSession(id string) (*Session, error) {
 		}
 	}
 	return nil, errors.New("could not find Session for given ID")
+}
+
+// GetSessionFromUrl is a convenience method to find an existing session by taking the session ID
+// from a *url.URL query parameter.
+func (m *SessionManager) GetSessionFromUrl(u *url.URL) (*Session, error) {
+	return m.GetSession(u.Query().Get(m.SessionName))
+}
+
+// GetSessionFromCookie is a convenience method to find an existing session by taking the session ID
+// from the cookie with the name initially set when creating the *SessionManager.
+func (m *SessionManager) GetSessionFromCookie(r *http.Request) (*Session, error) {
+	c, err := r.Cookie(m.SessionName)
+	if err != nil {
+		return nil, fmt.Errorf("could not read session cookie: %s", err.Error())
+	}
+	return m.GetSession(c.Value)
 }
 
 // RemoveSession removes the Session with the supplied session ID
@@ -118,7 +167,7 @@ func (s *Session) SetVar(key string, value string) {
 // SetCookie is a convenience method to set a session cookie with the initially chosen name.
 func (m *SessionManager) SetCookie(w http.ResponseWriter, value string, expires time.Time) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     m.CookieName,
+		Name:     m.SessionName,
 		Value:    value,
 		Path:     "/",
 		Expires:  expires,
@@ -129,7 +178,7 @@ func (m *SessionManager) SetCookie(w http.ResponseWriter, value string, expires 
 // RemoveCookie is a convenience method to remove the session cookie (s
 func (m *SessionManager) RemoveCookie(w http.ResponseWriter, name string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     m.CookieName,
+		Name:     m.SessionName,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -10,
@@ -139,7 +188,7 @@ func (m *SessionManager) RemoveCookie(w http.ResponseWriter, name string) {
 
 // GetCookieValue fetches the session ID from the session cookie of a given request
 func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
-	c, err := r.Cookie(m.CookieName)
+	c, err := r.Cookie(m.SessionName)
 	if err != nil {
 		return "", err
 	}

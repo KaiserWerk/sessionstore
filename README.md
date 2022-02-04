@@ -1,5 +1,7 @@
 # sessionstore
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/KaiserWerk/sessionstore.svg)](https://pkg.go.dev/github.com/KaiserWerk/sessionstore)
+
 This is a pure Go session store implementation. A session manager is use to create 
 and remove sessions, add, edit and remove values bound to a session. This can be used to contextualize sessions,
 e.g. for logically separating user login and admin login or shoping carts or ....

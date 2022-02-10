@@ -197,6 +197,53 @@ func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
 	return c.Value, nil
 }
 
+func (m *SessionManager) AddMessage(w http.ResponseWriter, t, msg string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     fmt.Sprintf("%s_MSG_TYPE", m.SessionName),
+		Value:    t,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Hour),
+		HttpOnly: true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     fmt.Sprintf("%s_MSG", m.SessionName),
+		Value:    msg,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Hour),
+		HttpOnly: true,
+	})
+}
+
+func (m *SessionManager) GetMessage(w http.ResponseWriter, r *http.Request) (string, string, error) {
+	tc, err := r.Cookie(fmt.Sprintf("%s_MSG_TYPE", m.SessionName))
+	if err != nil {
+		return "", "", err
+	}
+
+	mc, err := r.Cookie(fmt.Sprintf("%s_MSG", m.SessionName))
+	if err != nil {
+		return "", "", err
+	}
+
+	// remove the cookies
+	http.SetCookie(w, &http.Cookie{
+		Name:     fmt.Sprintf("%s_MSG_TYPE", m.SessionName),
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -10,
+		HttpOnly: true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     fmt.Sprintf("%s_MSG", m.SessionName),
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -10,
+		HttpOnly: true,
+	})
+
+	return tc.Value, mc.Value, nil
+}
+
 // removeSessionIndex removes a session from a session slice with the given index
 func removeSessionIndex(s []*Session, index int) []*Session {
 	return append(s[:index], s[index+1:]...)

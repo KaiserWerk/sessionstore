@@ -230,14 +230,14 @@ func (m *SessionManager) GetMessage(w http.ResponseWriter, r *http.Request) (str
 		Name:     fmt.Sprintf("%s_MSG_TYPE", m.SessionName),
 		Value:    "",
 		Path:     "/",
-		MaxAge:   -10,
+		Expires:  time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC),
 		HttpOnly: true,
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     fmt.Sprintf("%s_MSG", m.SessionName),
 		Value:    "",
 		Path:     "/",
-		MaxAge:   -10,
+		Expires:  time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC),
 		HttpOnly: true,
 	})
 

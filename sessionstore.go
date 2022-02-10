@@ -133,7 +133,9 @@ func (m *SessionManager) RemoveSession(id string) error {
 
 // RemoveAllSessions removes all Sessions from a *SessionManager
 func (m *SessionManager) RemoveAllSessions() {
+	m.mut.Lock()
 	m.Sessions = []*Session{}
+	m.mut.Unlock()
 }
 
 // SetMessage sets a flash message to the *Session

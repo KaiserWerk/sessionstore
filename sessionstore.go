@@ -21,6 +21,13 @@ type SessionManager struct {
 
 type MessageType string
 
+const (
+	MessageSuccess MessageType = "success"
+	MessageError   MessageType = "error"
+	MessageWarning MessageType = "warning"
+	MessageInfo    MessageType = "info"
+)
+
 type Message struct {
 	MessageType MessageType
 	Content     string

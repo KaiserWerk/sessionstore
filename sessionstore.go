@@ -19,8 +19,10 @@ type SessionManager struct {
 	mut         sync.RWMutex
 }
 
+type MessageType string
+
 type Message struct {
-	MessageType string
+	MessageType MessageType
 	Content     string
 }
 
@@ -139,7 +141,9 @@ func (m *SessionManager) RemoveAllSessions() {
 }
 
 // SetMessage sets a flash message to the *Session
-func (s *Session) SetMessage(t string, content string) {
+//
+// Deprecated
+func (s *Session) SetMessage(t MessageType, content string) {
 	s.Message = Message{
 		MessageType: t,
 		Content:     content,
@@ -197,24 +201,24 @@ func (m *SessionManager) GetCookieValue(r *http.Request) (string, error) {
 	return c.Value, nil
 }
 
-func (m *SessionManager) AddMessage(w http.ResponseWriter, t, msg string) {
+func (m *SessionManager) AddMessage(w http.ResponseWriter, t MessageType, msg string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     fmt.Sprintf("%s_MSG_TYPE", m.SessionName),
-		Value:    t,
+		Value:    string(t),
 		Path:     "/",
 		Expires:  time.Now().Add(time.Hour),
 		HttpOnly: true,
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     fmt.Sprintf("%s_MSG", m.SessionName),
-		Value:    msg,
+		Value:    url.QueryEscape(msg),
 		Path:     "/",
 		Expires:  time.Now().Add(time.Hour),
 		HttpOnly: true,
 	})
 }
 
-func (m *SessionManager) GetMessage(w http.ResponseWriter, r *http.Request) (string, string, error) {
+func (m *SessionManager) GetMessage(w http.ResponseWriter, r *http.Request) (MessageType, string, error) {
 	tc, err := r.Cookie(fmt.Sprintf("%s_MSG_TYPE", m.SessionName))
 	if err != nil {
 		return "", "", err
@@ -231,6 +235,7 @@ func (m *SessionManager) GetMessage(w http.ResponseWriter, r *http.Request) (str
 		Value:    "",
 		Path:     "/",
 		Expires:  time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC),
+		MaxAge:   -10,
 		HttpOnly: true,
 	})
 	http.SetCookie(w, &http.Cookie{
@@ -238,10 +243,12 @@ func (m *SessionManager) GetMessage(w http.ResponseWriter, r *http.Request) (str
 		Value:    "",
 		Path:     "/",
 		Expires:  time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC),
+		MaxAge:   -10,
 		HttpOnly: true,
 	})
 
-	return tc.Value, mc.Value, nil
+	v, _ := url.QueryUnescape(mc.Value)
+	return MessageType(tc.Value), v, nil
 }
 
 // removeSessionIndex removes a session from a session slice with the given index
